@@ -6,15 +6,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Lexend:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    /* tema bernuansa Arsenal: merah, putih, navy, emas (tanpa logo resmi klub) */
+    /* tema magenta dengan menu samping; --red = warna utama, --navy = magenta tua */
     --paper:#F6F4F1; --card:#FFFFFF; --ink:#0B1B33; --muted:#586577; --line:#DAD6D0;
-    --red:#EF0107; --navy:#063672; --gold:#C8A24A;
+    --red:#A91F7F; --navy:#6E1252; --gold:#C8A24A;
     --low:#B3001B; --low-bg:#FBEAEC; --edge:#C98400; --ok:#2E7D32; --ok-bg:#E8F3E9; --none:#9AA5B1; --mis:#5B4B9A;
     --head:'Barlow Condensed','Arial Narrow','Segoe UI',system-ui,sans-serif;
-    --body:'Figtree','Segoe UI',system-ui,sans-serif;
+    --body:'Lexend','Segoe UI',system-ui,sans-serif;
   }
   *{box-sizing:border-box}
   html,body{margin:0}
@@ -24,17 +24,36 @@
   [hidden]{display:none!important}
   :focus-visible{outline:2px solid var(--navy);outline-offset:2px}
 
-  header{background-color:var(--red);background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.08) 0 2px,transparent 2px 16px);color:#fff;padding:14px 16px 0;position:sticky;top:0;z-index:5;box-shadow:0 2px 0 rgba(0,0,0,.18)}
-  .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;max-width:960px;margin:0 auto}
-  h1{font:700 28px/1 var(--head);margin:0;flex:1 1 auto;letter-spacing:.03em;text-transform:uppercase}
-  h1 small{display:block;font:600 11px/1.4 var(--body);letter-spacing:.2em;opacity:.9}
-  .sync{display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,.92)}
-  .dot{width:9px;height:9px;border-radius:50%;background:#7BE08A;box-shadow:0 0 0 2px rgba(255,255,255,.75);flex:none}
-  .dot.busy{background:#FFD60A}.dot.err{background:#06142B}
-  select.sheet{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.45);color:#fff;border-radius:8px;padding:7px 10px;max-width:46vw}
-  nav{display:flex;gap:4px;max-width:960px;margin:12px auto 0}
-  nav button{background:none;border:0;color:rgba(255,255,255,.88);padding:10px 16px;border-radius:10px 10px 0 0;font-weight:600}
-  nav button[aria-selected=true]{background:var(--paper);color:var(--ink)}
+  header{background:var(--card);color:var(--ink);padding:10px 14px;position:sticky;top:0;z-index:5;border-bottom:1px solid var(--line)}
+  .top{display:flex;align-items:center;gap:12px;max-width:960px;margin:0 auto}
+  .burger{width:44px;height:44px;border:1px solid var(--line);background:var(--card);border-radius:10px;display:grid;place-items:center;flex:none;color:var(--red)}
+  .burger svg,.drawer svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  .ttl{flex:1 1 auto;min-width:0}
+  h1{font:600 22px/1.15 var(--body);margin:0;color:var(--ink)}
+  .sync{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);margin-top:2px;min-width:0}
+  #syncTxt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dot{width:9px;height:9px;border-radius:50%;background:#2FBF5B;box-shadow:0 0 0 2px rgba(0,0,0,.08);flex:none}
+  .dot.busy{background:#FFC400}.dot.err{background:#B3001B}
+  select.sheet{background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:7px 10px;max-width:40vw}
+  .avatar{width:40px;height:40px;border-radius:50%;background:#EBD5E4;color:var(--red);display:grid;place-items:center;font-weight:600;font-size:14px;flex:none}
+
+  .scrim{position:fixed;inset:0;background:rgba(25,6,19,.5);z-index:25}
+  .drawer{position:fixed;inset:0 auto 0 0;width:min(300px,84vw);background:var(--red);color:#fff;z-index:30;transform:translateX(-104%);transition:transform .22s ease;overflow-y:auto;padding:24px 14px calc(24px + env(safe-area-inset-bottom,0px));box-shadow:4px 0 24px rgba(0,0,0,.28)}
+  .drawer.open{transform:none}
+  .brand{font:300 42px/1 var(--body);letter-spacing:.06em;text-align:center;margin:6px 0 16px;text-transform:uppercase}
+  .brand b{display:block;font-weight:500;font-size:19px;letter-spacing:.42em;margin-top:8px;padding-left:.42em}
+  .badge{background:rgba(255,255,255,.26);border-radius:6px;padding:7px 10px;margin:0 6px 14px;text-align:center;font-size:12.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase}
+  .sect{font-size:13px;color:rgba(255,255,255,.72);padding:14px 12px 6px}
+  .drawer nav button{display:flex;align-items:center;gap:14px;width:100%;padding:14px 12px;margin:2px 0;border:0;border-radius:10px;background:none;color:#fff;font-size:16px;font-weight:500;text-align:left;position:relative}
+  .drawer nav button[aria-selected=true]{background:rgba(255,255,255,.22)}
+  .drawer nav button[aria-selected=true]::before{content:"";position:absolute;left:-14px;top:50%;height:28px;width:5px;transform:translateY(-50%);background:#fff;border-radius:0 4px 4px 0}
+  .drawer nav button:focus-visible{outline:2px solid #fff;outline-offset:-2px}
+  @media(min-width:900px){
+    body{padding-left:300px}
+    .drawer{transform:none;box-shadow:none}
+    .scrim{display:none!important}
+    .burger{display:none}
+  }
 
   main{max-width:960px;margin:0 auto;padding:16px 16px 90px}
   .tools{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
@@ -120,22 +139,15 @@
   .btn,.chip,.pick{min-height:44px}
   .tools{position:sticky;top:var(--hh,0px);z-index:4;background:var(--paper);padding:8px 0 6px;margin:-8px 0 10px}
   @media(max-width:639px){
-    header{padding:10px 14px 8px}
-    h1{font-size:24px}
-    .top{gap:4px 10px}
-    .sync{order:3;flex-basis:100%;font-size:12.5px}
-    select.sheet{max-width:55vw;font-size:14px}
-    nav{position:fixed;left:0;right:0;bottom:0;margin:0;max-width:none;gap:0;background:var(--navy);padding:0 0 env(safe-area-inset-bottom,0px);z-index:20;border-top:3px solid var(--red)}
-    nav button{flex:1;border-radius:0;padding:14px 4px;min-height:56px;font-size:14px}
-    nav button[aria-selected=true]{background:rgba(255,255,255,.14);color:#fff;box-shadow:inset 0 3px 0 var(--gold)}
-    main{padding:12px 14px calc(140px + env(safe-area-inset-bottom,0px))}
+    main{padding:12px 14px calc(100px + env(safe-area-inset-bottom,0px))}
     .chips{flex-wrap:nowrap;overflow-x:auto;margin:0 -14px;padding:2px 14px 4px;scrollbar-width:none}
     .chips::-webkit-scrollbar{display:none}
     .chip{flex:none;padding:8px 15px}
     .summary{padding:14px}
     .summary h2{font-size:26px}
+    h1{font-size:20px}
     .gh .btn.pri{flex-basis:100%;min-height:50px;font-size:16px}
-    .fab{right:14px;bottom:calc(72px + env(safe-area-inset-bottom,0px));padding:15px 22px;font-size:16px}
+    .fab{right:14px;bottom:calc(18px + env(safe-area-inset-bottom,0px));padding:15px 22px;font-size:16px}
     dialog{width:100%;max-width:100%;margin:auto 0 0;border-radius:18px 18px 0 0;max-height:92vh;overflow:auto;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
     .acts .btn{flex:1;min-height:48px}
     .item,.row{padding:12px}
@@ -146,16 +158,29 @@
 <body>
 <header>
   <div class="top">
-    <h1><small>Edisi Gunners</small>Stock barang</h1>
-    <div class="sync"><span class="dot busy" id="dot"></span><span id="syncTxt">Memuat…</span></div>
+    <button class="burger" id="burger" aria-label="Buka menu" aria-expanded="false"><svg viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button>
+    <div class="ttl">
+      <h1 id="pageTitle">Dashboard</h1>
+      <div class="sync"><span class="dot busy" id="dot"></span><span id="syncTxt">Memuat…</span></div>
+    </div>
     <select class="sheet" id="sheetSel" aria-label="Pilih tab" hidden></select>
+    <div class="avatar" id="avatar" aria-hidden="true">?</div>
   </div>
-  <nav role="tablist">
-    <button role="tab" id="tabDash" aria-selected="true">Dashboard</button>
-    <button role="tab" id="tabInput" aria-selected="false">Input stok</button>
-    <button role="tab" id="tabList" aria-selected="false">Daftar barang</button>
-  </nav>
 </header>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" aria-label="Menu">
+  <div class="brand">Stock<b>Barang</b></div>
+  <div class="badge">Input &amp; monitor stok</div>
+  <nav role="tablist">
+    <div class="sect">Stok</div>
+    <button role="tab" id="tabDash" aria-selected="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span>Dashboard</span></button>
+    <button role="tab" id="tabInput" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Input stok</span></button>
+    <button role="tab" id="tabList" aria-selected="false"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg><span>Daftar barang</span></button>
+    <div class="sect">Data</div>
+    <button type="button" id="navSync"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg><span>Sinkronkan sekarang</span></button>
+  </nav>
+</aside>
 
 <main>
   <div class="tools">
@@ -165,7 +190,7 @@
   <section id="viewDash"></section>
   <section id="viewInput" hidden></section>
   <section id="viewList" hidden></section>
-  <div class="sub" style="text-align:center;margin-top:28px">Versi 22 Nov 2026 - tema Arsenal</div>
+  <div class="sub" style="text-align:center;margin-top:28px">Versi 22 Nov 2026</div>
 </main>
 
 <button class="fab" id="fab" hidden>Input barang</button>
@@ -445,6 +470,7 @@ function refreshSenderState(){
   });
   const h = $('#senderHint'); if (h) h.hidden = ok;
   const f = $('#fab'); f.disabled = !ok; f.style.opacity = ok ? '' : '.45';
+  updateAvatar();
 }
 
 function pickCard(attr, val, name, its){
@@ -675,12 +701,29 @@ $('#sheetSel').addEventListener('change', e => { S.sheet = e.target.value; S.ver
 
 function setTab(t){
   S.tab = t;
+  $('#pageTitle').textContent = TITLES[t];
+  openDrawer(false);
   $('#tabDash').setAttribute('aria-selected', t==='dash');
   $('#tabInput').setAttribute('aria-selected', t==='input');
   $('#tabList').setAttribute('aria-selected', t==='list');
   $('#viewDash').hidden = t!=='dash'; $('#viewInput').hidden = t!=='input'; $('#viewList').hidden = t!=='list';
   render();
 }
+const TITLES = { dash:'Dashboard', input:'Input stok', list:'Daftar barang' };
+function openDrawer(o){
+  $('#drawer').classList.toggle('open', o);
+  $('#scrim').hidden = !o;
+  $('#burger').setAttribute('aria-expanded', String(o));
+}
+function updateAvatar(){
+  const w = S.sender.trim().split(/\s+/).filter(Boolean);
+  $('#avatar').textContent = w.length ? (w[0][0] + (w[1] ? w[1][0] : (w[0][1] || ''))).toUpperCase() : '?';
+}
+$('#burger').onclick = () => openDrawer(!$('#drawer').classList.contains('open'));
+$('#scrim').onclick = () => openDrawer(false);
+$('#navSync').onclick = () => { openDrawer(false); load(true); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') openDrawer(false); });
+updateAvatar();
 $('#tabDash').onclick = () => setTab('dash');
 $('#tabInput').onclick = () => setTab('input');
 $('#tabList').onclick = () => setTab('list');
