@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* tema bernuansa Arsenal: merah, putih, navy, emas (tanpa logo resmi klub) */
+    --paper:#F6F4F1; --card:#FFFFFF; --ink:#0B1B33; --muted:#586577; --line:#DAD6D0;
+    --red:#EF0107; --navy:#063672; --gold:#C8A24A;
+    --low:#B3001B; --low-bg:#FBEAEC; --edge:#C98400; --ok:#2E7D32; --ok-bg:#E8F3E9; --none:#9AA5B1; --mis:#5B4B9A;
+    --head:'Barlow Condensed','Arial Narrow','Segoe UI',system-ui,sans-serif;
+    --body:'Figtree','Segoe UI',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--paper);color:var(--ink);font:400 15px/1.45 var(--body);-webkit-text-size-adjust:100%}
+  button,input,select{font:inherit;color:inherit}
+  button{cursor:pointer}
+  [hidden]{display:none!important}
+  :focus-visible{outline:2px solid var(--navy);outline-offset:2px}
+
+  header{background-color:var(--red);background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.08) 0 2px,transparent 2px 16px);color:#fff;padding:14px 16px 0;position:sticky;top:0;z-index:5;box-shadow:0 2px 0 rgba(0,0,0,.18)}
+  .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;max-width:960px;margin:0 auto}
+  h1{font:700 28px/1 var(--head);margin:0;flex:1 1 auto;letter-spacing:.03em;text-transform:uppercase}
+  h1 small{display:block;font:600 11px/1.4 var(--body);letter-spacing:.2em;opacity:.9}
+  .sync{display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,.92)}
+  .dot{width:9px;height:9px;border-radius:50%;background:#7BE08A;box-shadow:0 0 0 2px rgba(255,255,255,.75);flex:none}
+  .dot.busy{background:#FFD60A}.dot.err{background:#06142B}
+  select.sheet{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.45);color:#fff;border-radius:8px;padding:7px 10px;max-width:46vw}
+  nav{display:flex;gap:4px;max-width:960px;margin:12px auto 0}
+  nav button{background:none;border:0;color:rgba(255,255,255,.88);padding:10px 16px;border-radius:10px 10px 0 0;font-weight:600}
+  nav button[aria-selected=true]{background:var(--paper);color:var(--ink)}
+
+  main{max-width:960px;margin:0 auto;padding:16px 16px 90px}
+  .tools{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+  .search{width:100%;font-size:16px;min-height:46px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 13px;font-size:14px}
+  .chip[aria-pressed=true]{background:var(--navy);border-color:var(--navy);color:#fff}
+
+  .summary{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--red);border-radius:14px;padding:16px;margin-bottom:16px}
+  .summary h2{font:700 28px/1.1 var(--head);margin:0 0 4px;letter-spacing:.01em;text-transform:uppercase}
+  .summary p{margin:0 0 12px;color:var(--muted)}
+  .stack{display:flex;height:10px;border-radius:6px;overflow:hidden;background:var(--line)}
+  .stack i{display:block;height:100%}
+  .legend{display:flex;gap:6px 16px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--muted)}
+  .legend b{color:var(--ink)}
+  .legend span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:var(--c)}
+  .opt{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:14px}
+  .opt input{width:18px;height:18px;accent-color:var(--red)}
+
+  .grp{font:700 22px var(--head);margin:20px 0 8px;letter-spacing:.03em;text-transform:uppercase}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .row{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:10px;padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:center}
+  .row.low,.item.low{--c:var(--low)}.row.edge,.item.edge{--c:var(--edge)}.row.ok,.item.ok{--c:var(--ok)}.row.empty,.row.none,.item.empty,.item.none{--c:var(--none)}
+  .row.mismatch,.item.mismatch{--c:var(--mis)}
+  .name{font-weight:600;overflow-wrap:anywhere}
+  .sub{color:var(--muted);font-size:13px}
+  .qty{text-align:right;font:700 26px/1 var(--head);letter-spacing:.01em}
+  .qty small{font:400 13px var(--body);color:var(--muted)}
+  .state{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin-top:6px}
+  .bar{flex:1;height:6px;background:var(--line);border-radius:4px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--c)}
+  .tag{font-size:12.5px;font-weight:600;color:var(--c);white-space:nowrap}
+  .empty-box{padding:28px 16px;text-align:center;color:var(--muted);background:var(--card);border:1px dashed var(--line);border-radius:12px}
+
+  .item{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:10px;padding:10px 12px;display:grid;grid-template-columns:1fr 96px;gap:8px 10px;align-items:end}
+  .item .info{grid-column:1/-1}
+  .fld{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--muted)}
+  .item .tag{align-self:center;justify-self:start;grid-column:1/-1;margin-top:-2px;white-space:normal}
+  input.n{width:100%;min-height:46px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#FBFCFB;text-align:right;color:var(--ink);font-size:16px}
+  input.n.lim{width:100%}
+  input.n:focus{background:#fff;border-color:var(--ink)}
+  input.n.saved{border-color:var(--ok);background:var(--ok-bg)}
+  input.n.fail{border-color:var(--low);background:var(--low-bg)}
+  @media(min-width:640px){
+    .item{grid-template-columns:1fr 160px 110px 190px;align-items:center}
+    .item .info{grid-column:auto}
+    .item .tag{grid-column:auto;margin:0}
+  }
+
+.picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .pick{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 14px;text-align:left;display:flex;flex-direction:column;gap:2px;min-height:92px}
+  .pick{border-top:4px solid var(--navy)}
+  .pick:hover{border-color:var(--red)}
+  .pn{font:700 22px/1.15 var(--head);letter-spacing:.03em;text-transform:uppercase}
+  .gh{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+  .sugg{max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+  .opt-item{text-align:left;background:#fff;border:1px solid var(--line);border-radius:8px;padding:9px 11px;display:flex;flex-direction:column;gap:1px}
+  .opt-item:hover,.opt-item:focus-visible{border-color:var(--ink);background:var(--paper)}
+  .chosen{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px}
+  .lnk{background:none;border:0;padding:6px 0;color:var(--muted);text-decoration:underline;font-size:13.5px;text-align:left}
+  input.n.qty{width:100%;text-align:left}
+  .lockv{min-height:46px;display:flex;align-items:center;padding:0 10px;border:1px dashed var(--line);border-radius:8px;background:var(--paper);font-weight:600;color:var(--ink);font-size:16px;overflow-wrap:anywhere}
+  .sender{margin-bottom:14px}
+  .sec{font:700 26px var(--head);margin:30px 0 4px;letter-spacing:.03em;text-transform:uppercase}
+  .pair{display:flex;gap:6px;align-items:center}
+  .pair>*{min-width:0}
+  .pair input:first-child{flex:1}
+  select.n{padding:10px 8px;border:1px solid var(--line);border-radius:8px;background:#FBFCFB;font-size:16px;color:var(--ink)}
+  .pair .u{width:92px;flex:none;text-align:left;text-transform:uppercase}
+  .fab{position:fixed;right:16px;bottom:16px;background:var(--red);color:#fff;border:0;border-radius:999px;padding:13px 20px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+  dialog{border:0;border-radius:14px;padding:20px;width:min(420px,92vw)}
+  dialog::backdrop{background:rgba(10,20,15,.5)}
+  dialog h3{font:700 26px var(--head);margin:0 0 12px;letter-spacing:.03em;text-transform:uppercase}
+  .f{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+  .f span{font-size:13px;color:var(--muted)}
+  .f input,.f select{padding:10px;border:1px solid var(--line);border-radius:8px;font-size:16px;background:#fff;width:100%}
+  .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+  .btn{padding:10px 16px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:600}
+  .btn.pri{background:var(--red);border-color:var(--red);color:#fff}
+  .err-msg{color:var(--low);font-size:13px;min-height:18px}
+  *{-webkit-tap-highlight-color:transparent}
+  button,select,input{touch-action:manipulation}
+  .btn,.chip,.pick{min-height:44px}
+  .tools{position:sticky;top:var(--hh,0px);z-index:4;background:var(--paper);padding:8px 0 6px;margin:-8px 0 10px}
+  @media(max-width:639px){
+    header{padding:10px 14px 8px}
+    h1{font-size:24px}
+    .top{gap:4px 10px}
+    .sync{order:3;flex-basis:100%;font-size:12.5px}
+    select.sheet{max-width:55vw;font-size:14px}
+    nav{position:fixed;left:0;right:0;bottom:0;margin:0;max-width:none;gap:0;background:var(--navy);padding:0 0 env(safe-area-inset-bottom,0px);z-index:20;border-top:3px solid var(--red)}
+    nav button{flex:1;border-radius:0;padding:14px 4px;min-height:56px;font-size:14px}
+    nav button[aria-selected=true]{background:rgba(255,255,255,.14);color:#fff;box-shadow:inset 0 3px 0 var(--gold)}
+    main{padding:12px 14px calc(140px + env(safe-area-inset-bottom,0px))}
+    .chips{flex-wrap:nowrap;overflow-x:auto;margin:0 -14px;padding:2px 14px 4px;scrollbar-width:none}
+    .chips::-webkit-scrollbar{display:none}
+    .chip{flex:none;padding:8px 15px}
+    .summary{padding:14px}
+    .summary h2{font-size:26px}
+    .gh .btn.pri{flex-basis:100%;min-height:50px;font-size:16px}
+    .fab{right:14px;bottom:calc(72px + env(safe-area-inset-bottom,0px));padding:15px 22px;font-size:16px}
+    dialog{width:100%;max-width:100%;margin:auto 0 0;border-radius:18px 18px 0 0;max-height:92vh;overflow:auto;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
+    .acts .btn{flex:1;min-height:48px}
+    .item,.row{padding:12px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <h1><small>Edisi Gunners</small>Stock barang</h1>
+    <div class="sync"><span class="dot busy" id="dot"></span><span id="syncTxt">Memuat…</span></div>
+    <select class="sheet" id="sheetSel" aria-label="Pilih tab" hidden></select>
+  </div>
+  <nav role="tablist">
+    <button role="tab" id="tabDash" aria-selected="true">Dashboard</button>
+    <button role="tab" id="tabInput" aria-selected="false">Input stok</button>
+    <button role="tab" id="tabList" aria-selected="false">Daftar barang</button>
+  </nav>
+</header>
+
+<main>
+  <div class="tools">
+    <input class="search" id="q" type="search" placeholder="Cari nama barang atau SKU" aria-label="Cari barang">
+    <div class="chips" id="chips"></div>
+  </div>
+  <section id="viewDash"></section>
+  <section id="viewInput" hidden></section>
+  <section id="viewList" hidden></section>
+  <div class="sub" style="text-align:center;margin-top:28px">Versi 22 Nov 2026 - tema Arsenal</div>
+</main>
+
+<button class="fab" id="fab" hidden>Input barang</button>
+
+<dialog id="dlg">
+  <h3 id="dTitle">Input stok barang</h3>
+  <label class="f"><span>Grup</span><select id="aGroup"></select></label>
+  <label class="f" id="aLocWrap" hidden><span>Area</span><select id="aLoc"></select></label>
+
+  <div id="pickBox">
+    <label class="f"><span>Cari barang (SKU atau nama)</span>
+      <input id="aSearch" type="search" autocomplete="off" placeholder="Ketik SKU atau nama barang"></label>
+    <div class="sugg" id="sugg"></div>
+    <div class="chosen" id="chosen" hidden>
+      <div class="name" id="cName"></div>
+      <div class="sub" id="cSub"></div>
+      <label class="f" style="margin:10px 0 0"><span>Stok beserta satuan (boleh 2 satuan), contoh: 1 KARUNG 5 PCK</span>
+        <input id="aStock" type="text" autocomplete="off" placeholder="1 CTN"></label>
+    </div>
+    <button type="button" class="lnk" id="toNew">Barang belum ada di spreadsheet? Tambah barang baru</button>
+  </div>
+
+  <div id="newBox" hidden>
+    <label class="f" id="aNewWrap" hidden><span>Nama grup baru</span><input id="aNewGroup" placeholder="Contoh: FROZEN"></label>
+    <label class="f"><span>SKU</span><input id="aSku" inputmode="numeric"></label>
+    <label class="f"><span>Nama barang</span><input id="aName"></label>
+    <label class="f"><span>Satuan input</span><input id="aUnit" placeholder="CTN, PCK/CTN, KG/CTN"></label>
+    <label class="f"><span>Batas limit</span><input id="aLimit" placeholder="Contoh: 1 CTN"></label>
+    <button type="button" class="lnk" id="toPick">Kembali ke pilih barang yang sudah ada</button>
+  </div>
+
+  <div class="err-msg" id="aErr"></div>
+  <div class="acts">
+    <button class="btn" id="aCancel">Batal</button>
+    <button class="btn pri" id="aSave">Simpan stok</button>
+  </div>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const DEFAULT_GROUPS = ['FRIED CHICKEN','ANEKA','ODEN','RAMBI'];
+const S = { sheet:null, items:[], groups:[], version:'', tab:'dash', group:'ALL', inGroup:null, inLoc:null, sender:'', q:'',
+            showEmpty:false, editing:false, pending:false, retention:2, saving:0 };
+const same = (a,b) => String(a).trim().toUpperCase() === String(b).trim().toUpperCase();
+try{ S.sender = localStorage.getItem('sender') || ''; }catch(_){}
+const NO_LOC = '(TANPA LOKASI)';
+const groupItemsOf = g => S.items.filter(i => same(i.group, g));
+// daftar lokasi dalam satu grup (dari sheet): judul lokasi di dalam grup atau kolom LOKASI
+const AREA_PRESETS = { 'FRIED CHICKEN': ['FROZEN', 'CHILLER', 'GUDANG KERING', 'PACKAGING'] };
+const presetFor = g => { const k = Object.keys(AREA_PRESETS).find(x => same(x, g)); return k ? AREA_PRESETS[k] : []; };
+function groupLocs(g){
+  const its = groupItemsOf(g), out = [];
+  presetFor(g).forEach(a => { const hit = its.find(i => i.location && same(i.location, a)); out.push(hit ? hit.location : a); });
+  its.forEach(i => { if (i.location && !out.some(o => same(o, i.location))) out.push(i.location); });
+  if (out.length && its.some(i => !i.location)) out.push(NO_LOC);
+  return out;
+}
+const inLocation = (it, loc) => (loc === null || loc === undefined || loc === '') ? true : (loc === NO_LOC ? !it.location : same(it.location, loc));
+const unitList = () => groupItemsOf(S.inGroup).filter(i => inLocation(i, S.inLoc));
+// true bila sudah sampai ke daftar barang (grup tanpa lokasi langsung, grup berlokasi setelah memilih lokasi)
+const inItems = () => !!S.inGroup && (S.inLoc !== null || groupLocs(S.inGroup).length === 0);
+const locLabel = l => l === NO_LOC ? 'Tanpa area' : l;
+// Daftar grup untuk penginputan: grup bawaan + grup lain yang ada di sheet.
+// Grup yang belum punya barang tidak ditampilkan (mis. ES CREAM yang kosong).
+function allGroups(){
+  const out = [];
+  [...DEFAULT_GROUPS, ...S.groups].forEach(g => {
+    if (groupItemsOf(g).length && !out.some(o => same(o, g)))
+      out.push(S.groups.find(x => same(x, g)) || g);
+  });
+  return out;
+}
+
+// GANTI dengan URL Web App Apps Script Anda (berakhiran /exec)
+const API_URL = 'https://script.google.com/macros/s/AKfycbyVfp5GwPTdiMOe6zFhVGrci_5vQ7B6RPafR0I8ssutUssZBy6RNV0l-D7tImg7fTH0qg/exec';
+async function call(fn, ...args){
+  // tanpa header khusus agar browser tidak mengirim preflight (CORS) ke Apps Script
+  const r = await fetch(API_URL, { method:'POST', body: JSON.stringify({ fn, args }) });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'Terjadi kesalahan di server');
+  return j.data;
+}
+const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => (n ?? 0).toLocaleString('id-ID', {maximumFractionDigits:2});
+
+function sync(state, txt){ $('#dot').className = 'dot ' + (state||''); $('#syncTxt').textContent = txt; }
+
+// low = di bawah limit, edge = sama dengan limit, ok = di atas limit,
+// empty = stok belum diinput, none = barang tanpa limit
+function status(it){
+  if (it.limit == null) return 'none';
+  if (it.stock == null) return 'empty';
+  if (it.stockUnit && it.limitUnit && !same(it.stockUnit, it.limitUnit)) return 'mismatch';  // satuan beda, tidak bisa dibandingkan
+  return it.stock < it.limit ? 'low' : (it.stock === it.limit ? 'edge' : 'ok');
+}
+const unitOf = it => it.limitUnit || it.stockUnit || '';
+const fmtQty = it => it.stock == null ? '-' : (it.stockText || (fmt(it.stock) + (it.stockUnit ? ' ' + it.stockUnit : '')));
+function unitOptions(it){
+  const out = [];
+  [...(it.units || []), it.limitUnit, it.stockUnit].forEach(u => { u = String(u||'').trim().toUpperCase(); if (u && !out.includes(u)) out.push(u); });
+  return out;
+}
+// Satuan resmi yang diterima (ditambah satuan di kolom IN PUT / LIMIT barang itu). Samakan dengan UNITS di Code.gs.
+const UNITS = ['CTN','KG','PCK','KARUNG','PCS','PAK','BOX','DUS','GR','LTR','IKAT','BAL'];
+const exampleQty = it => {
+  const us = unitOptions(it), u0 = it.limitUnit || us[0] || 'CTN', u1 = us.find(u => u !== u0);
+  return '1 ' + u0 + (u1 ? ' 5 ' + u1 : '');     // contoh: "1 KARUNG 5 PCS"
+};
+// Baca input stok: satu atau dua (sampai empat) satuan, mis. "1 ctn", "2,5 kg", "1 karung 5 pck". Angka saja ditolak.
+function parseQty(text, it){
+  const hint = 'Isi angka beserta satuan, contoh: 1 CTN atau 1 KARUNG 5 PCK.';
+  const s = String(text || '').trim().replace(/\s+/g, ' ');
+  if (!s) return { error: hint };
+  if (/^[\d.,\/\s]+$/.test(s)) return { error: 'Angka saja tidak diterima. ' + hint };
+  const allowed = [...new Set([...UNITS, ...(it ? unitOptions(it) : [])])];
+  const re = /\s*(?:[,;+&]|\bdan\b)?\s*(\d+\s*\/\s*\d+|\d+(?:[.,]\d+)?)\s*([A-Za-z]+)/y;
+  const parts = [];
+  let pos = 0, m;
+  re.lastIndex = 0;
+  while (pos < s.length && (m = re.exec(s)) !== null){
+    pos = re.lastIndex;
+    let numText, num;
+    if (m[1].includes('/')){
+      const [x, y] = m[1].split('/').map(v => Number(v.trim()));
+      if (!y) return { error: hint };
+      numText = x + '/' + y; num = x / y;
+    } else { numText = m[1].replace(',', '.'); num = Number(numText); }
+    const unit = m[2].toUpperCase();
+    if (!allowed.includes(unit)) return { error: `Satuan "${unit}" tidak dikenal. Pilihan: ${allowed.join(', ')}.` };
+    if (parts.some(p => p.unit === unit)) return { error: `Satuan ${unit} diisi dua kali. Gabungkan jumlahnya, atau pakai dua satuan yang berbeda.` };
+    parts.push({ num, numText, unit });
+  }
+  if (pos < s.length || !parts.length) return { error: 'Setiap angka harus disertai satuan. ' + hint };
+  if (parts.length > 4) return { error: 'Paling banyak 4 satuan sekaligus.' };
+  // yang dibandingkan dengan limit: bagian bersatuan sama dengan limit, kalau tidak ada: bagian pertama
+  const main = (it && it.limitUnit && parts.find(p => same(p.unit, it.limitUnit))) || parts[0];
+  return { num: main.num, unit: main.unit, text: parts.map(p => p.numText + ' ' + p.unit).join(' ') };
+}
+
+/* ---------- memuat data ---------- */
+async function load(force){
+  if (!S.sheet) return;
+  try{
+    sync('busy', 'Menyinkronkan…');
+    const d = await call('getData', S.sheet);
+    if (force || d.version !== S.version){
+      if (S.editing && !force) S.pending = true;
+      else { S.items = d.items; S.groups = d.groups; S.version = d.version; S.retention = d.retentionDays || 2; render(); }
+    }
+    sync('', `Tersambung: ${S.items.length} barang, ${S.groups.length} grup (tab ${S.sheet})`);
+  }catch(e){ sync('err', 'Gagal memuat: ' + (e.message || e)); }
+}
+
+/* ---------- tampilan ---------- */
+function filtered(){
+  const q = S.q.trim().toLowerCase();
+  return S.items.filter(it =>
+    (S.group === 'ALL' || it.group === S.group) &&
+    (!q || it.name.toLowerCase().includes(q) || it.sku.toLowerCase().includes(q)));
+}
+function render(){
+  renderChips();
+  const inp = S.tab === 'input';
+  $('.tools').hidden = inp && !inItems();
+  $('#chips').hidden = inp;
+  $('#q').hidden = inp && !inItems();
+  $('#fab').hidden = !(inp && inItems());
+  S.tab === 'input' ? renderInput() : S.tab === 'list' ? renderList() : renderDash();
+  refreshSenderState();
+}
+
+function renderChips(){
+  const gs = ['ALL', ...S.groups.filter(g => S.items.some(i => i.group === g))];
+  if (!gs.includes(S.group)) S.group = 'ALL';
+  $('#chips').innerHTML = gs.map(g =>
+    `<button class="chip" data-group="${esc(g)}" aria-pressed="${g===S.group}">${g==='ALL'?'Semua grup':esc(g)}</button>`).join('');
+  fillGroupSelect();
+}
+function fillGroupSelect(withNew){
+  if (withNew === undefined) withNew = (typeof D !== 'undefined' && D.mode === 'new');
+  const sel = $('#aGroup'), prev = sel.value;
+  sel.innerHTML = allGroups().map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('')
+    + (withNew ? '<option value="__new__">+ Grup baru…</option>' : '');
+  if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+  toggleNewGroup();
+  if (typeof D !== 'undefined') fillLocSelect($('#aLoc').value);
+}
+function toggleNewGroup(){ $('#aNewWrap').hidden = !(D.mode === 'new' && $('#aGroup').value === '__new__'); }
+
+function renderDash(){
+  renderDashTop();
+  $('#viewDash').insertAdjacentHTML('beforeend',
+    '<div class="sec">Sudah diinput per grup</div><div class="sub" style="margin-bottom:4px">Barang yang sudah diinput, dikelompokkan per grup.</div>' + doneHtml());
+}
+function renderDashTop(){
+  const all = filtered().filter(i => i.limit != null);
+  const by = s => all.filter(i => status(i) === s);
+  const low = by('low'), edge = by('edge'), ok = by('ok'), empty = by('empty'), mis = by('mismatch');
+  const pct = n => all.length ? n/all.length*100 : 0;
+  const alert = low.length + edge.length;
+  let rows = all.filter(i => ['low','edge'].includes(status(i)));
+  rows.sort((a,b) => (a.stock/(a.limit||1)) - (b.stock/(b.limit||1)) || a.name.localeCompare(b.name));
+  rows = rows.concat(mis);
+  if (S.showEmpty) rows = rows.concat(empty);
+
+  $('#viewDash').innerHTML = `
+    <div class="summary">
+      <h2>${alert} barang sama dengan atau di bawah limit</h2>
+      <p>${empty.length ? empty.length + ' barang belum diinput stoknya dan belum dihitung.' : 'Semua stok sudah diinput.'}</p>
+      <div class="stack" role="img" aria-label="Komposisi status stok">
+        <i style="width:${pct(low.length)}%;background:var(--low)"></i>
+        <i style="width:${pct(edge.length)}%;background:var(--edge)"></i>
+        <i style="width:${pct(ok.length)}%;background:var(--ok)"></i>
+        <i style="width:${pct(mis.length)}%;background:var(--mis)"></i>
+        <i style="width:${pct(empty.length)}%;background:var(--none)"></i>
+      </div>
+      <div class="legend">
+        <span style="--c:var(--low)"><b>${low.length}</b> di bawah limit</span>
+        <span style="--c:var(--edge)"><b>${edge.length}</b> tepat di limit</span>
+        <span style="--c:var(--ok)"><b>${ok.length}</b> aman</span>
+        ${mis.length ? `<span style="--c:var(--mis)"><b>${mis.length}</b> satuan beda</span>` : ''}
+        <span style="--c:var(--none)"><b>${empty.length}</b> belum diinput</span>
+      </div>
+      <label class="opt"><input type="checkbox" id="showEmpty" ${S.showEmpty?'checked':''}> Tampilkan juga barang yang belum diinput</label>
+    </div>
+    ${rows.length ? `<div class="list">${rows.map(it => {
+      const st = status(it);
+      const w = (st==='empty' || st==='mismatch') ? 0 : (it.limit ? Math.min(100, it.stock/it.limit*100) : 0);
+      const tag = st==='empty' ? 'Belum diinput' : st==='mismatch' ? `Satuan beda: stok ${esc(it.stockText)}, limit ${esc(it.limitUnit)}` : st==='edge' ? 'Tepat di batas' : `Kurang ${fmt(it.limit - it.stock)} ${esc(unitOf(it))}`;
+      return `<div class="row ${st}">
+        <div><div class="name">${esc(it.name)}</div><div class="sub">${esc(it.sku)} &nbsp; ${esc(it.group)}${it.location ? ' / ' + esc(it.location) : ''}</div></div>
+        <div class="qty">${esc(fmtQty(it))} <small>dari ${esc(it.limitText)}</small></div>
+        <div class="state"><div class="bar"><i style="width:${w}%"></i></div><span class="tag">${tag}</span></div>
+      </div>`;}).join('')}</div>`
+      : `<div class="empty-box">Tidak ada barang yang sama dengan atau di bawah limit.</div>`}`;
+}
+
+function itemTag(it){
+  const st = status(it);
+  if (st==='none') return 'Tanpa limit';
+  if (st==='empty') return 'Belum diinput';
+  if (st==='mismatch') return `Satuan beda dari limit (${it.stockText} / ${it.limitUnit}), cek manual`;
+  if (st==='low') return `Di bawah limit, kurang ${fmt(it.limit - it.stock)}`;
+  if (st==='edge') return 'Tepat di batas';
+  return 'Aman';
+}
+function expiryText(it){
+  if (it.stock == null || !it.ts) return '';
+  const left = it.ts + S.retention*864e5 - Date.now();
+  if (left <= 0) return 'segera dihapus otomatis';
+  return `terhapus otomatis dalam ${Math.ceil(left/864e5)} hari`;
+}
+function itemHtml(it){
+  const locked = it.stock != null;   // stok yang sudah tersimpan terkunci
+  const stockCell = locked
+    ? `<div class="fld">Stok + satuan (terkunci)<div class="lockv">${esc(fmtQty(it))}</div></div>`
+    : `<label class="fld">Stok + satuan
+        <input class="n qty" type="text" enterkeyhint="next" autocomplete="off" ${senderOk() ? '' : 'disabled'} placeholder="${senderOk() ? 'contoh: ' + esc(exampleQty(it)) : 'Isi nama pengirim dulu'}" data-row="${it.row}" data-key="stock" value=""></label>`;
+  return `<div class="item ${status(it)}" data-item="${it.row}">
+    <div class="info"><div class="name">${esc(it.name)}</div><div class="sub">${esc(it.sku)} &nbsp; ${esc(it.unit)}${expiryText(it) ? ' &nbsp; ' + expiryText(it) : ''}</div></div>
+    ${stockCell}
+    <div class="fld">Limit<div class="lockv">${esc(it.limitText || '-')}</div></div>
+    <span class="tag" data-tag="${it.row}">${itemTag(it)}</span>
+  </div>`;
+}
+const senderOk = () => S.sender.trim().length > 0;
+const senderBar = () => `<div class="sender"><label class="fld">Nama pengirim (wajib diisi)
+  <input id="senderIn" class="n" type="text" autocomplete="name" maxlength="40" placeholder="Tulis nama Anda" value="${esc(S.sender)}"></label>
+  <div class="tag" id="senderHint" style="--c:var(--low);margin-top:6px" ${senderOk() ? 'hidden' : ''}>Isi nama pengirim dulu. Selama kosong, stok tidak bisa diinput.</div></div>`;
+// kunci / buka kolom input barang sesuai nama pengirim
+function refreshSenderState(){
+  const ok = senderOk();
+  document.querySelectorAll('#viewInput input.qty').forEach(el => {
+    el.disabled = !ok;
+    const it = S.items.find(i => i.row === Number(el.dataset.row));
+    el.placeholder = ok ? 'contoh: ' + (it ? exampleQty(it) : '1 CTN') : 'Isi nama pengirim dulu';
+  });
+  const h = $('#senderHint'); if (h) h.hidden = ok;
+  const f = $('#fab'); f.disabled = !ok; f.style.opacity = ok ? '' : '.45';
+}
+
+function pickCard(attr, val, name, its){
+  const todo = its.filter(i => i.stock == null && i.limit != null).length;
+  return `<button class="pick" ${attr}="${esc(val)}">
+    <span class="pn">${esc(name)}</span>
+    <span class="sub">${its.length ? its.length + ' barang' : 'Belum ada barang'}</span>
+    <span class="sub">${its.length ? (todo ? todo + ' belum diinput' : 'Semua sudah diinput') : '&nbsp;'}</span>
+  </button>`;
+}
+function renderInput(){
+  // Tahap 1: pilih grup
+  if (!S.inGroup){
+    $('#viewInput').innerHTML = `
+      <div class="summary"><h2>Pilih grup barang</h2><p>Pilih grup dulu, lalu mulai menginput stok barangnya.</p></div>
+      ${senderBar()}
+      <div class="picks">${allGroups().map(g => pickCard('data-pick', g, g, groupItemsOf(g))).join('')}</div>`;
+    return;
+  }
+  // Tahap 2: pilih lokasi (hanya untuk grup yang punya lokasi di sheet)
+  const locs = groupLocs(S.inGroup);
+  if (locs.length && S.inLoc === null){
+    $('#viewInput').innerHTML = `
+      <div class="gh"><button class="btn" data-back="group">Ganti grup</button>
+        <div><div class="grp" style="margin:0">${esc(S.inGroup)}</div><div class="sub">Pilih area barang</div></div></div>
+      ${senderBar()}
+      ${groupItemsOf(S.inGroup).every(i => !i.location) ? `<div class="empty-box" style="margin-bottom:12px;text-align:left">Barang di grup ini belum diberi area di spreadsheet. Jalankan <b>isiAreaFriedChicken</b> di Apps Script, atau isi kolom <b>AREA</b> di sheet. Sementara itu, pilih <b>Tanpa area</b> untuk melihat semua barangnya.</div>` : ''}
+      <div class="picks">
+        ${pickCard('data-loc', '__all__', 'Semua area', groupItemsOf(S.inGroup))}
+        ${locs.map(l => pickCard('data-loc', l, locLabel(l), groupItemsOf(S.inGroup).filter(i => inLocation(i, l)))).join('')}
+      </div>`;
+    return;
+  }
+  // Tahap 3: input barang
+  const q = S.q.trim().toLowerCase();
+  const all = unitList();
+  const items = all.filter(i => !q || i.name.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q));
+  const title = esc(S.inGroup) + (S.inLoc ? ' / ' + esc(locLabel(S.inLoc)) : '');
+  $('#viewInput').innerHTML = `
+    <div class="gh"><button class="btn" data-back="${locs.length ? 'loc' : 'group'}">${locs.length ? 'Ganti area' : 'Ganti grup'}</button>
+      <div><div class="grp" style="margin:0">${title}</div><div class="sub">${all.length} barang</div></div>
+      <button class="btn pri" id="btnSend" style="margin-left:auto">Selesai, kirim ke WhatsApp</button></div>
+    ${senderBar()}
+    ${items.length ? `<div class="list">${items.map(itemHtml).join('')}</div>`
+      : `<div class="empty-box">${all.length ? 'Tidak ada barang yang cocok.' : 'Belum ada barang di sini. Tekan Input barang untuk menambah.'}</div>`}`;
+}
+
+/* ---------- daftar barang otomatis (stok <= limit) ---------- */
+function listItems(){
+  const order = allGroups();
+  let rows = filtered().filter(i => i.limit != null && (['low','edge','mismatch'].includes(status(i)) || (S.showEmpty && status(i)==='empty')));
+  const gi = g => { const k = order.findIndex(o => same(o,g)); return k < 0 ? 99 : k; };
+  rows.sort((a,b) => gi(a.group) - gi(b.group) || (a.stock??-1)/(a.limit||1) - (b.stock??-1)/(b.limit||1) || a.name.localeCompare(b.name));
+  return rows;
+}
+function lineInfo(it){
+  const st = status(it), u = unitOf(it);
+  const stok = it.stock == null ? 'belum diinput' : `stok ${fmtQty(it)}`;
+  const kurang = st === 'mismatch' ? ', satuan berbeda dari limit (cek manual)' : st === 'low' ? `, kurang ${fmt(it.limit - it.stock)} ${u}`.trimEnd() : (st === 'edge' ? ', tepat di limit' : '');
+  return `${stok} dari limit ${it.limitText}${kurang}`;
+}
+function listText(rows){
+  const tgl = new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+  let out = `DAFTAR BARANG (stok sama dengan / di bawah limit)\n${tgl}\n`;
+  let cur = null, n = 0;
+  rows.forEach(it => {
+    if (it.group !== cur){ cur = it.group; n = 0; out += `\n${cur}\n`; }
+    out += `${++n}. ${it.name} (${it.sku}): ${lineInfo(it)}\n`;
+  });
+  return out.trim();
+}
+function renderList(){
+  const rows = listItems();
+  $('#viewList').innerHTML = `
+    <div class="summary">
+      <h2>${rows.length} barang dalam daftar</h2>
+      <p>Daftar dibuat otomatis dari stok dan limit yang ada di spreadsheet, dan ikut berubah saat data berubah.</p>
+      <div class="acts" style="justify-content:flex-start;margin:0">
+        <button class="btn pri" id="btnCopy" ${rows.length?'':'disabled'}>Salin daftar</button>
+        <button class="btn" id="btnWa" ${rows.length?'':'disabled'}>Kirim ke WhatsApp</button>
+      </div>
+      <label class="opt"><input type="checkbox" id="showEmpty" ${S.showEmpty?'checked':''}> Sertakan barang yang belum diinput</label>
+    </div>
+    ${rows.length ? (() => { let cur = null, html = '';
+      rows.forEach(it => {
+        if (it.group !== cur){ if (cur !== null) html += '</div>'; cur = it.group; html += `<div class="grp">${esc(cur)}</div><div class="list">`; }
+        html += `<div class="row ${status(it)}"><div><div class="name">${esc(it.name)}</div><div class="sub">${esc(it.sku)}${it.location ? ' &nbsp; ' + esc(it.location) : ''}</div></div>
+          <div class="qty">${esc(fmtQty(it))} <small>dari ${esc(it.limitText)}</small></div>
+          <div class="state"><span class="tag">${esc(lineInfo(it))}</span></div></div>`;
+      });
+      return html + '</div>'; })()
+      : `<div class="empty-box">Belum ada barang yang sama dengan atau di bawah limit.</div>`}`;
+}
+/* ---------- daftar barang yang sudah diinput, per grup ---------- */
+function ago(ts){
+  if (!ts) return '';
+  const m = Math.floor((Date.now() - ts) / 60000);
+  if (m < 1) return 'baru saja';
+  if (m < 60) return m + ' menit lalu';
+  const h = Math.floor(m / 60);
+  return h < 24 ? h + ' jam lalu' : Math.floor(h / 24) + ' hari lalu';
+}
+function doneHtml(){
+  const q = S.q.trim().toLowerCase();
+  const gs = allGroups().filter(g => (S.group === 'ALL' || same(g, S.group)) && groupItemsOf(g).length);
+  if (!gs.length) return '<div class="empty-box">Belum ada data barang.</div>';
+  return gs.map(g => {
+    const its = groupItemsOf(g);
+    const done = its.filter(i => i.stock != null).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    const shown = done.filter(i => !q || i.name.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q));
+    const pct = its.length ? done.length / its.length * 100 : 0;
+    return `<div class="grp">${esc(g)}</div>
+      <div class="sub" style="margin:-4px 0 6px">${done.length} dari ${its.length} barang sudah diinput</div>
+      <div class="bar" style="margin-bottom:10px;--c:var(--ok)"><i style="width:${pct}%"></i></div>
+      ${shown.length ? `<div class="list">${shown.map(it => `<div class="row ${status(it)}">
+          <div><div class="name">${esc(it.name)}</div>
+            <div class="sub">${esc(it.sku)}${it.location ? ' &nbsp; ' + esc(it.location) : ''}${it.ts ? ' &nbsp; ' + ago(it.ts) : ''}</div></div>
+          <div class="qty">${esc(fmtQty(it))} <small>limit ${esc(it.limitText || '-')}</small></div>
+        </div>`).join('')}</div>`
+        : `<div class="empty-box">${done.length ? 'Tidak ada barang yang cocok.' : 'Belum ada barang yang diinput di grup ini.'}</div>`}`;
+  }).join('');
+}
+async function copyText(t){
+  try{ await navigator.clipboard.writeText(t); }
+  catch(e){ const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+}
+
+/* ---------- simpan ke spreadsheet ---------- */
+// pesan setelah simpan: laporan otomatis terkirim saat semua barang di lokasi/grup itu sudah terisi
+function noteAuto(r){
+  if (!r || r.auto === 'none') return false;
+  if (r.auto === 'sent') sync('', `Semua barang ${r.label} sudah diinput. Laporan otomatis terkirim ke WhatsApp.`);
+  else sync('err', `Stok tersimpan, tetapi laporan otomatis gagal terkirim: ${r.error}. Tekan "Selesai, kirim ke WhatsApp" untuk mencoba lagi.`);
+  return true;
+}
+async function saveField(input){
+  if (input.dataset.key !== 'stock') return;          // limit tidak bisa diubah dari webapp
+  const row = Number(input.dataset.row);
+  const it = S.items.find(i => i.row === row); if (!it || it.stock != null) return;
+  const el = document.querySelector(`[data-item="${row}"]`);
+  const tagEl = el && el.querySelector('[data-tag]');
+  const raw = input.value.trim();
+  if (raw === '') return;                              // kosong: tidak ada yang disimpan
+  if (!S.sender.trim()){                               // nama pengirim wajib
+    input.classList.add('fail');
+    if (tagEl){ tagEl.textContent = 'Isi nama pengirim dulu di bagian atas.'; tagEl.style.color = 'var(--low)'; }
+    sync('err', 'Isi nama pengirim dulu di bagian atas.');
+    const si = $('#senderIn'); if (si) si.focus();
+    return;
+  }
+  const q = parseQty(raw, it);
+  if (q.error){                                        // ditolak: tidak disimpan
+    input.classList.add('fail');
+    if (tagEl){ tagEl.textContent = q.error; tagEl.style.color = 'var(--low)'; }
+    sync('err', 'Stok ditolak: ' + q.error);
+    return;
+  }
+  it.stock = q.num; it.stockUnit = q.unit; it.stockText = q.text; it.ts = Date.now();
+  input.value = q.text; input.readOnly = true;         // langsung dikunci agar tidak terkirim dua kali
+  input.classList.remove('fail'); input.classList.add('saved');
+  sync('busy','Menyimpan…');
+  S.saving++;
+  try{
+    const res = await call('saveCell', S.sheet, row, 'stock', q.text, S.sender.trim());
+    if (!noteAuto(res)) sync('', 'Tersimpan ke spreadsheet dan terkunci');
+    const cur = document.querySelector(`[data-item="${row}"]`);
+    if (cur) cur.outerHTML = itemHtml(it);              // tampilkan versi terkunci
+  }catch(e){
+    it.stock = null; it.stockUnit = ''; it.stockText = ''; it.ts = null;   // gagal: buka kunci lagi
+    input.readOnly = false; input.classList.remove('saved'); input.classList.add('fail');
+    sync('err', 'Gagal menyimpan: ' + (e.message || e));
+    load(true);                                         // muat ulang bila stok ternyata sudah terisi orang lain
+  }
+  finally{ S.saving--; }
+}
+
+/* ---------- interaksi ---------- */
+async function sendReport(btn){
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();  // pastikan input terakhir tersimpan
+  const old = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Mengirim…';
+  sync('busy', 'Mengirim laporan ke WhatsApp…');
+  try{
+    await new Promise(r => setTimeout(r, 300));
+    while (S.saving > 0) await new Promise(r => setTimeout(r, 150));
+    if (!S.sender.trim()) throw new Error('Isi nama pengirim dulu di bagian atas.');
+    const r = await call('sendGroupReport', S.sheet, S.inGroup, S.inLoc ? S.inLoc : null, S.sender.trim());
+    sync('', `Laporan ${S.inGroup}${S.inLoc ? ' / ' + locLabel(S.inLoc) : ''} terkirim ke WhatsApp (${r.sent} barang)`);
+  }catch(e){ sync('err', 'Gagal kirim: ' + (e.message || e)); }
+  btn.disabled = false; btn.textContent = old;
+}
+document.addEventListener('click', async e => {
+  if (e.target.id === 'btnSend'){ sendReport(e.target); return; }
+  if (e.target.id === 'btnCopy'){ await copyText(listText(listItems())); sync('', 'Daftar disalin'); return; }
+  if (e.target.id === 'btnWa'){ window.open('https://wa.me/?text=' + encodeURIComponent(listText(listItems())), '_blank'); return; }
+  const g = e.target.closest('[data-group]');
+  if (g){ S.group = g.dataset.group; render(); return; }
+  const p = e.target.closest('[data-pick]');
+  if (p){ S.inGroup = p.dataset.pick; S.inLoc = null; S.q = ''; $('#q').value = ''; render(); window.scrollTo(0,0); return; }
+  const lc = e.target.closest('[data-loc]');
+  if (lc){ S.inLoc = lc.dataset.loc === '__all__' ? '' : lc.dataset.loc; S.q = ''; $('#q').value = ''; render(); window.scrollTo(0,0); return; }
+  const bk = e.target.closest('[data-back]');
+  if (bk){
+    if (bk.dataset.back === 'loc') S.inLoc = null; else { S.inGroup = null; S.inLoc = null; }
+    S.q = ''; $('#q').value = ''; render();
+  }
+});
+document.addEventListener('change', e => {
+  if (e.target.matches('input[data-key], select[data-key]')) saveField(e.target);
+  else if (e.target.id === 'showEmpty'){ S.showEmpty = e.target.checked; render(); }
+});
+document.addEventListener('focusin', e => { if (e.target.matches('input[data-key], select[data-key], #senderIn')) S.editing = true; });
+document.addEventListener('input', e => {
+  if (e.target.id === 'senderIn'){
+    S.sender = e.target.value.replace(/[*_~`]/g, ' ').slice(0, 40);
+    try{ localStorage.setItem('sender', S.sender); }catch(_){}
+    refreshSenderState();
+  }
+});
+document.addEventListener('focusout', () => setTimeout(() => {
+  if (!document.activeElement || !document.activeElement.matches('input[data-key], select[data-key], #senderIn')){
+    S.editing = false;
+    if (S.pending){ S.pending = false; load(true); }
+  }
+}, 150));
+$('#q').addEventListener('input', e => { S.q = e.target.value; render(); });
+$('#sheetSel').addEventListener('change', e => { S.sheet = e.target.value; S.version=''; load(true); });
+
+function setTab(t){
+  S.tab = t;
+  $('#tabDash').setAttribute('aria-selected', t==='dash');
+  $('#tabInput').setAttribute('aria-selected', t==='input');
+  $('#tabList').setAttribute('aria-selected', t==='list');
+  $('#viewDash').hidden = t!=='dash'; $('#viewInput').hidden = t!=='input'; $('#viewList').hidden = t!=='list';
+  render();
+}
+$('#tabDash').onclick = () => setTab('dash');
+$('#tabInput').onclick = () => setTab('input');
+$('#tabList').onclick = () => setTab('list');
+
+/* input stok lewat pencarian + tambah barang baru */
+const D = { mode:'pick', chosen:null };
+
+function setMode(m){
+  D.mode = m;
+  $('#pickBox').hidden = m !== 'pick';
+  $('#newBox').hidden = m !== 'new';
+  $('#dTitle').textContent = m === 'pick' ? 'Input stok barang' : 'Tambah barang baru';
+  $('#aSave').textContent = m === 'pick' ? 'Simpan stok' : 'Simpan barang';
+  $('#aErr').textContent = '';
+  $('#aSave').disabled = (m === 'pick' && !!D.chosen && D.chosen.stock != null);
+  fillGroupSelect(m === 'new');
+}
+function fillLocSelect(preset){
+  const g = $('#aGroup').value, locs = (g && g !== '__new__') ? groupLocs(g) : [];
+  const list = D.mode === 'pick' ? locs : locs.filter(l => l !== NO_LOC);
+  $('#aLocWrap').hidden = !list.length;
+  $('#aLoc').innerHTML = (D.mode === 'pick' ? '<option value="">Semua area</option>' : '<option value="">(tanpa area)</option>')
+    + list.map(l => `<option value="${esc(l)}">${esc(locLabel(l))}</option>`).join('');
+  if (preset !== undefined && [...$('#aLoc').options].some(o => o.value === preset)) $('#aLoc').value = preset;
+}
+const groupItems = () => S.items.filter(i => same(i.group, $('#aGroup').value) && inLocation(i, $('#aLoc').value));
+function matches(it, q){
+  const hay = (it.name + ' ' + it.sku).toLowerCase();
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(t => hay.includes(t));
+}
+function renderSugg(){
+  const box = $('#sugg');
+  if (D.chosen){ box.innerHTML = ''; return; }
+  const q = $('#aSearch').value.trim(), pool = groupItems();
+  const list = pool.filter(it => !q || matches(it, q));
+  if (!list.length){
+    box.innerHTML = `<div class="sub" style="padding:4px 2px">${pool.length ? 'Tidak ada barang yang cocok di grup ini.' : 'Grup ini belum punya barang di spreadsheet.'}</div>`;
+    return;
+  }
+  box.innerHTML = list.slice(0, 60).map(it =>
+    `<button type="button" class="opt-item" data-choose="${it.row}">
+       <span class="name">${esc(it.name)}</span>
+       <span class="sub">${esc(it.sku)} &nbsp; limit ${esc(it.limitText || '-')}${it.stock != null ? ' &nbsp; sudah diinput: ' + esc(fmtQty(it)) + ' (terkunci)' : ''}</span>
+     </button>`).join('');
+}
+function choose(row){
+  const it = S.items.find(i => i.row === row); if (!it) return;
+  D.chosen = it;
+  $('#aSearch').value = it.name;
+  $('#cName').textContent = it.name;
+  $('#cSub').textContent = `${it.sku}   ${it.unit}   limit ${it.limitText || '-'}`;
+  const locked = it.stock != null;
+  $('#aStock').placeholder = exampleQty(it);
+  $('#aStock').value = locked ? fmtQty(it) : '';
+  const noName = !senderOk();
+  $('#aStock').disabled = locked || noName;
+  $('#aSave').disabled = locked || noName;
+  $('#aErr').textContent = locked ? 'Stok barang ini sudah diinput dan terkunci. Tidak bisa diubah lewat webapp.' : (noName ? 'Isi nama pengirim dulu di halaman Input stok.' : '');
+  $('#chosen').hidden = false;
+  renderSugg();
+  $('#aStock').focus();
+}
+function resetChosen(){ D.chosen = null; $('#chosen').hidden = true; $('#aStock').disabled = false; $('#aSave').disabled = false; $('#aErr').textContent = ''; }
+
+$('#aSearch').addEventListener('input', () => { resetChosen(); renderSugg(); });
+$('#sugg').addEventListener('click', e => {
+  const b = e.target.closest('[data-choose]'); if (b) choose(Number(b.dataset.choose));
+});
+$('#aGroup').addEventListener('change', () => { fillLocSelect(''); toggleNewGroup(); if (D.mode === 'pick'){ resetChosen(); renderSugg(); } });
+$('#aLoc').addEventListener('change', () => { if (D.mode === 'pick'){ resetChosen(); renderSugg(); } });
+$('#toNew').onclick = () => setMode('new');
+$('#toPick').onclick = () => { setMode('pick'); renderSugg(); };
+
+$('#fab').onclick = () => {
+  resetChosen();
+  setMode('pick');
+  if (S.inGroup) $('#aGroup').value = S.inGroup;   // otomatis pakai grup yang sedang dipilih
+  fillLocSelect(S.inLoc || '');                      // dan lokasi yang sedang dipilih
+  $('#aSearch').value = '';
+  renderSugg();
+  $('#dlg').showModal();
+  setTimeout(() => $('#aSearch').focus(), 50);
+};
+$('#aCancel').onclick = () => $('#dlg').close();
+
+$('#aSave').onclick = async () => {
+  $('#aErr').textContent = '';
+  if (D.mode === 'pick'){
+    const it = D.chosen;
+    if (!it){ $('#aErr').textContent = 'Pilih barang dari daftar dulu.'; return; }
+    if (!S.sender.trim()){ $('#aErr').textContent = 'Isi nama pengirim dulu di halaman Input stok.'; return; }
+    const q = parseQty($('#aStock').value, it);
+    if (q.error){ $('#aErr').textContent = q.error; return; }
+    $('#aSave').disabled = true;
+    try{
+      const res = await call('saveCell', S.sheet, it.row, 'stock', q.text, S.sender.trim());
+      it.stock = q.num; it.stockUnit = q.unit; it.stockText = q.text; it.ts = Date.now();
+      $('#dlg').close();
+      render();
+      if (!noteAuto(res)) sync('', `Stok ${it.name} (${q.text}) tersimpan ke spreadsheet`);
+    }catch(e){ $('#aErr').textContent = e.message || String(e); }
+    $('#aSave').disabled = false;
+    return;
+  }
+  const isNew = $('#aGroup').value === '__new__';
+  const item = { group: isNew ? $('#aNewGroup').value : $('#aGroup').value, sku:$('#aSku').value, name:$('#aName').value,
+                 unit:$('#aUnit').value, limit:$('#aLimit').value, location: $('#aLocWrap').hidden ? '' : $('#aLoc').value };
+  $('#aSave').disabled = true;
+  try{
+    await call('addItem', S.sheet, item);
+    $('#dlg').close();
+    ['aSku','aName','aUnit','aLimit','aNewGroup'].forEach(id => $('#'+id).value = '');
+    await load(true);
+  }catch(e){ $('#aErr').textContent = e.message || String(e); }
+  $('#aSave').disabled = false;
+};
+
+/* kenyamanan di HP */
+function setHH(){ document.documentElement.style.setProperty('--hh', $('header').offsetHeight + 'px'); }
+window.addEventListener('resize', setHH);
+setHH();
+if (window.ResizeObserver) new ResizeObserver(setHH).observe($('header'));
+// pilih seluruh isi kolom saat disentuh, jadi langsung bisa diketik ulang
+document.addEventListener('focusin', e => {
+  if (e.target.matches('input.qty, input.lim')) setTimeout(() => { try{ e.target.select(); }catch(_){} }, 0);
+});
+// tombol Enter/Next di keyboard: simpan lalu pindah ke barang berikutnya
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.matches('input.qty')){
+    e.preventDefault();
+    const all = [...document.querySelectorAll('#viewInput input.qty')], i = all.indexOf(e.target);
+    e.target.blur();
+    const nx = all[i + 1];
+    if (nx) setTimeout(() => nx.focus(), 60);
+  }
+});
+
+/* mulai */
+(async function init(){
+  try{
+    const b = await call('bootstrap');
+    S.sheet = b.current;
+    if (b.sheets.length > 1){
+      $('#sheetSel').hidden = false;
+      $('#sheetSel').innerHTML = b.sheets.map(n => `<option ${n===S.sheet?'selected':''}>${esc(n)}</option>`).join('');
+    }
+    await load(true);
+    setInterval(load, 8000);                       // cek perubahan spreadsheet tiap 8 detik
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+  }catch(e){ sync('err', 'Gagal terhubung: ' + (e.message || e)); }
+})();
+</script>
+</body>
+</html>
