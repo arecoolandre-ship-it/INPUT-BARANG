@@ -134,6 +134,20 @@
   .btn{padding:10px 16px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:600}
   .btn.pri{background:var(--red);border-color:var(--red);color:#fff}
   .err-msg{color:var(--low);font-size:13px;min-height:18px}
+  .cfq{font:600 34px/1.1 var(--body);margin:6px 0 2px;overflow-wrap:anywhere;color:var(--red)}
+  .cfw{background:var(--low-bg);color:var(--low);border-radius:8px;padding:9px 11px;font-size:13.5px;margin-top:10px}
+  .row.hist{width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer}
+  .row.hist:hover{border-color:var(--ink)}
+  .spark{display:block}
+  .bigchart{width:100%;height:auto;display:block;margin:6px 0 10px}
+  .hbars{display:flex;align-items:flex-end;gap:3px;height:70px;margin:8px 0 4px}
+  .hbars i{flex:1;min-width:3px;background:var(--navy);border-radius:3px 3px 0 0;opacity:.85}
+  .hbars i.z{background:var(--line);opacity:1}
+  .htab{width:100%;border-collapse:collapse;font-size:13.5px}
+  .htab td,.htab th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  .htab th{color:var(--muted);font-weight:500;font-size:12.5px}
+  .htab .t{white-space:nowrap}
+  #histDlg{width:min(520px,94vw)}
   *{-webkit-tap-highlight-color:transparent}
   button,select,input{touch-action:manipulation}
   .btn,.chip,.pick{min-height:44px}
@@ -177,6 +191,7 @@
     <button role="tab" id="tabDash" aria-selected="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span>Dashboard</span></button>
     <button role="tab" id="tabInput" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Input stok</span></button>
     <button role="tab" id="tabList" aria-selected="false"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg><span>Daftar barang</span></button>
+    <button role="tab" id="tabHist" aria-selected="false"><svg viewBox="0 0 24 24"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg><span>Riwayat</span></button>
     <div class="sect">Data</div>
     <button type="button" id="navSync"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg><span>Sinkronkan sekarang</span></button>
   </nav>
@@ -190,6 +205,7 @@
   <section id="viewDash"></section>
   <section id="viewInput" hidden></section>
   <section id="viewList" hidden></section>
+  <section id="viewHist" hidden></section>
   <div class="sub" style="text-align:center;margin-top:28px">Versi 22 Nov 2026</div>
 </main>
 
@@ -229,6 +245,28 @@
   </div>
 </dialog>
 
+<dialog id="cfDlg">
+  <h3>Periksa dulu</h3>
+  <div class="name" id="cfName"></div>
+  <div class="sub" id="cfSub"></div>
+  <div class="cfq" id="cfQty"></div>
+  <div class="sub" id="cfLimit"></div>
+  <div class="cfw" id="cfWarn" hidden></div>
+  <p class="sub" style="margin:12px 0 0">Setelah disimpan, stok tidak bisa diubah dan ikut tercatat di laporan WhatsApp.</p>
+  <div class="acts">
+    <button class="btn" id="cfNo" type="button" autofocus>Periksa lagi</button>
+    <button class="btn pri" id="cfYes" type="button">Simpan</button>
+  </div>
+</dialog>
+
+<dialog id="histDlg">
+  <h3 id="hdName"></h3>
+  <div class="sub" id="hdSub"></div>
+  <div id="hdChart"></div>
+  <div id="hdTable"></div>
+  <div class="acts"><button class="btn" id="hdClose" type="button">Tutup</button></div>
+</dialog>
+
 <dialog id="nameDlg">
   <h3>Selamat datang</h3>
   <p class="sub" style="margin:0 0 12px">Isi nama Anda dulu. Nama ini dipakai sebagai pengirim saat menginput stok dan ikut tercatat di laporan WhatsApp.</p>
@@ -245,7 +283,8 @@
 const $ = s => document.querySelector(s);
 const DEFAULT_GROUPS = ['FRIED CHICKEN','ANEKA','ODEN','RAMBI'];
 const S = { sheet:null, items:[], groups:[], version:'', tab:'dash', group:'ALL', inGroup:null, inLoc:null, sender:'', q:'',
-            showEmpty:false, editing:false, pending:false, retention:2, saving:0, sending:false };
+            showEmpty:false, editing:false, pending:false, retention:2, saving:0, sending:false, confirming:false,
+            hist:{ days:14, rows:[], loaded:false, loading:false, err:'' } };
 const same = (a,b) => String(a).trim().toUpperCase() === String(b).trim().toUpperCase();
 try{ S.sender = localStorage.getItem('sender') || ''; }catch(_){}
 const NO_LOC = '(TANPA LOKASI)';
@@ -349,7 +388,7 @@ async function load(force){
     sync('busy', 'Menyinkronkan…');
     const d = await call('getData', S.sheet);
     if (force || d.version !== S.version){
-      if (S.editing && !force) S.pending = true;
+      if ((S.editing || S.confirming) && !force) S.pending = true;
       else { S.items = d.items; S.groups = d.groups; S.version = d.version; S.retention = d.retentionDays || 2; render(); }
     }
     sync('', `Tersambung: ${S.items.length} barang, ${S.groups.length} grup (tab ${S.sheet})`);
@@ -370,7 +409,7 @@ function render(){
   $('#chips').hidden = inp;
   $('#q').hidden = inp && !inItems();
   $('#fab').hidden = !(inp && inItems());
-  S.tab === 'input' ? renderInput() : S.tab === 'list' ? renderList() : renderDash();
+  S.tab === 'input' ? renderInput() : S.tab === 'list' ? renderList() : S.tab === 'hist' ? renderHist() : renderDash();
   refreshSenderState();
 }
 
@@ -618,8 +657,38 @@ function noteAuto(r){
   else sync('err', `Stok tersimpan, tetapi laporan otomatis gagal terkirim: ${r.error}. Tekan "Selesai, kirim ke WhatsApp" untuk mencoba lagi.`);
   return true;
 }
+// Kotak konfirmasi: menampilkan barang dan jumlah yang akan disimpan. Hasilnya true (simpan) atau false (periksa lagi).
+function confirmQty(it, q){
+  return new Promise(res => {
+    S.confirming = true;
+    $('#cfName').textContent = it.name;
+    $('#cfSub').textContent = [it.sku, it.group, it.location].filter(Boolean).join('   ');
+    $('#cfQty').textContent = q.text;
+    $('#cfLimit').textContent = 'Limit ' + (it.limitText || '-');
+    // peringatan bila angka jauh lebih besar dari limit (sering akibat salah ketik, mis. 50 padahal 5)
+    const w = $('#cfWarn');
+    const big = it.limit > 0 && it.limitUnit && same(q.unit, it.limitUnit) && q.num >= it.limit * 10;
+    w.hidden = !big;
+    if (big) w.textContent = `Jumlah ini ${Math.round(q.num / it.limit)} kali lipat dari limit. Pastikan angkanya sudah benar.`;
+    const d = $('#cfDlg');
+    let ok = false;
+    $('#cfYes').onclick = () => { ok = true; d.close(); };
+    $('#cfNo').onclick = () => d.close();
+    d.onclose = () => { S.confirming = false; d.onclose = null; res(ok); };
+    d.showModal();
+  });
+}
+function flushPending(){ if (S.pending && !S.editing && !S.confirming){ S.pending = false; load(true); } }
+// data yang dikirim ke server untuk dicatat sebagai riwayat
+function histMeta(it, q){
+  const t = Object.assign({}, it, { stock: q.num, stockUnit: q.unit });
+  return { group: it.group, loc: it.location || '', sku: it.sku, name: it.name, num: q.num, unit: q.unit,
+           limitNum: it.limit, limitUnit: it.limitUnit || '', limitText: it.limitText || '', status: status(t) };
+}
+
 async function saveField(input){
   if (input.dataset.key !== 'stock') return;          // limit tidak bisa diubah dari webapp
+  if (S.confirming) return;
   const row = Number(input.dataset.row);
   const it = S.items.find(i => i.row === row); if (!it || it.stock != null) return;
   const el = document.querySelector(`[data-item="${row}"]`);
@@ -640,26 +709,171 @@ async function saveField(input){
     sync('err', 'Stok ditolak: ' + q.error);
     return;
   }
+  const nextInput = (() => { const all = [...document.querySelectorAll('#viewInput input.qty')]; return all[all.indexOf(input) + 1]; })();
+  if (!(await confirmQty(it, q))){                     // pengimput memilih "Periksa lagi": belum disimpan
+    input.classList.remove('fail');
+    if (tagEl){ tagEl.textContent = 'Belum disimpan. Periksa angkanya lalu tekan Enter lagi.'; tagEl.style.color = 'var(--muted)'; }
+    sync('', 'Stok belum disimpan');
+    flushPending();
+    setTimeout(() => { try{ input.focus(); }catch(_){} }, 50);
+    return;
+  }
+  if (it.stock != null) return;                        // sudah terisi (misalnya dari perangkat lain) selama konfirmasi
   it.stock = q.num; it.stockUnit = q.unit; it.stockText = q.text; it.ts = Date.now();
   input.value = q.text; input.readOnly = true;         // langsung dikunci agar tidak terkirim dua kali
   input.classList.remove('fail'); input.classList.add('saved');
   sync('busy','Menyimpan…');
   S.saving++;
   try{
-    const res = await call('saveCell', S.sheet, row, 'stock', q.text, S.sender.trim());
+    const res = await call('saveCell', S.sheet, row, 'stock', q.text, S.sender.trim(), histMeta(it, q));
+    S.hist.loaded = false;                              // riwayat perlu dimuat ulang
     if (!noteAuto(res)) sync('', 'Tersimpan ke spreadsheet dan terkunci');
     const cur = document.querySelector(`[data-item="${row}"]`);
     if (cur) cur.outerHTML = itemHtml(it);              // tampilkan versi terkunci
+    if (nextInput && document.body.contains(nextInput) && !nextInput.disabled) setTimeout(() => nextInput.focus(), 60);
   }catch(e){
     it.stock = null; it.stockUnit = ''; it.stockText = ''; it.ts = null;   // gagal: buka kunci lagi
     input.readOnly = false; input.classList.remove('saved'); input.classList.add('fail');
     sync('err', 'Gagal menyimpan: ' + (e.message || e));
     load(true);                                         // muat ulang bila stok ternyata sudah terisi orang lain
   }
-  finally{ S.saving--; }
+  finally{ S.saving--; flushPending(); }
 }
 
 /* ---------- interaksi ---------- */
+/* ---------- riwayat & tren ---------- */
+const stColor = { low:'var(--low)', edge:'var(--edge)', ok:'var(--ok)', mismatch:'var(--mis)', empty:'var(--none)', none:'var(--none)' };
+const fmtDT = t => new Date(t).toLocaleString('id-ID', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+const fmtD = t => new Date(t).toLocaleDateString('id-ID', { day:'numeric', month:'short' });
+async function loadHist(){
+  const H = S.hist;
+  if (H.loading || !S.sheet) return;
+  H.loading = true; H.err = '';
+  try{
+    const rows = await call('getHistory', S.sheet, H.days);
+    H.rows = (rows || []).slice().sort((a, b) => a.t - b.t);
+    H.loaded = true;
+  }catch(e){
+    H.err = (e && e.message) || String(e);
+    H.loaded = true; H.rows = [];
+  }
+  H.loading = false;
+  if (S.tab === 'hist') renderHist();
+}
+// grafik garis stok dari waktu ke waktu, dengan garis putus-putus untuk limit
+function spark(rows, big){
+  const pts = rows.filter(r => r.num != null && (!r.limitUnit || !r.unit || same(r.unit, r.limitUnit)));
+  if (!pts.length) return big ? '<div class="sub">Belum ada data yang satuannya sama dengan limit.</div>' : '<span class="sub">-</span>';
+  const W = big ? 360 : 110, H = big ? 150 : 34, L = big ? 34 : 4, R = 6, T = 8, B = big ? 24 : 4;
+  const lim = pts[pts.length - 1].limitNum || 0;
+  const maxY = (Math.max(lim, ...pts.map(p => p.num)) || 1) * 1.15;
+  const t0 = pts[0].t, t1 = pts[pts.length - 1].t, span = t1 - t0;
+  const X = (p, i) => pts.length === 1 ? (L + W - R) / 2 : L + (span > 0 ? (p.t - t0) / span : i / (pts.length - 1)) * (W - L - R);
+  const Y = v => T + (1 - v / maxY) * (H - T - B);
+  const line = pts.map((p, i) => X(p, i).toFixed(1) + ',' + Y(p.num).toFixed(1)).join(' ');
+  let out = `<svg class="${big ? 'bigchart' : 'spark'}" viewBox="0 0 ${W} ${H}" ${big ? '' : `width="${W}" height="${H}"`} role="img" aria-label="Grafik stok">`;
+  if (lim) out += `<line x1="${L}" x2="${W - R}" y1="${Y(lim).toFixed(1)}" y2="${Y(lim).toFixed(1)}" style="stroke:var(--low)" stroke-width="1.2" stroke-dasharray="4 3"/>`;
+  if (pts.length > 1) out += `<polyline points="${line}" fill="none" style="stroke:var(--navy)" stroke-width="${big ? 2 : 1.6}"/>`;
+  pts.forEach((p, i) => { out += `<circle cx="${X(p, i).toFixed(1)}" cy="${Y(p.num).toFixed(1)}" r="${big ? 3.6 : 2.4}" style="fill:${stColor[p.status] || 'var(--navy)'}"/>`; });
+  if (big){
+    out += `<line x1="${L}" x2="${L}" y1="${T}" y2="${H - B}" style="stroke:var(--line)"/><line x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}" style="stroke:var(--line)"/>`;
+    out += `<text x="${L - 4}" y="${H - B + 3}" text-anchor="end" font-size="10" style="fill:var(--muted)">0</text>`;
+    out += `<text x="${L - 4}" y="${T + 8}" text-anchor="end" font-size="10" style="fill:var(--muted)">${esc(fmt(Math.round(maxY * 10) / 10))}</text>`;
+    if (lim) out += `<text x="${W - R}" y="${Y(lim) - 3}" text-anchor="end" font-size="10" style="fill:var(--low)">limit ${esc(fmt(lim))}</text>`;
+    out += `<text x="${L}" y="${H - 8}" font-size="10" style="fill:var(--muted)">${esc(fmtD(t0))}</text>`;
+    if (span > 0) out += `<text x="${W - R}" y="${H - 8}" text-anchor="end" font-size="10" style="fill:var(--muted)">${esc(fmtD(t1))}</text>`;
+  }
+  return out + '</svg>';
+}
+function histAgg(){
+  const q = S.q.trim().toLowerCase(), map = new Map();
+  S.hist.rows.forEach(r => {
+    if (S.group !== 'ALL' && !same(r.group, S.group)) return;
+    if (q && !(String(r.name).toLowerCase().includes(q) || String(r.sku).toLowerCase().includes(q))) return;
+    const k = String(r.group).toUpperCase() + '|' + r.sku;
+    let a = map.get(k);
+    if (!a){ a = { key:k, group:r.group, sku:r.sku, name:r.name, rows:[], n:0, low:0 }; map.set(k, a); }
+    a.rows.push(r); a.n++;
+    if (r.status === 'low' || r.status === 'edge') a.low++;
+  });
+  return [...map.values()];
+}
+function renderHist(){
+  const box = $('#viewHist'), H = S.hist;
+  const chips = [7, 14, 30, 60].map(d => `<button class="chip" data-hdays="${d}" aria-pressed="${H.days === d}">${d} hari</button>`).join('');
+  if (!H.loaded){
+    box.innerHTML = `<div class="chips" style="margin-bottom:12px">${chips}</div><div class="empty-box">Memuat riwayat…</div>`;
+    loadHist(); return;
+  }
+  if (H.err){
+    box.innerHTML = `<div class="chips" style="margin-bottom:12px">${chips}</div>
+      <div class="empty-box">Riwayat belum bisa dimuat: ${esc(H.err)}<br><br>Pastikan Api.gs terbaru sudah dipasang dan di-deploy sebagai New version.<br><br><button class="btn" id="hRetry">Coba lagi</button></div>`;
+    return;
+  }
+  const aggs = histAgg();
+  const total = aggs.reduce((n, a) => n + a.n, 0);
+  const hit = aggs.filter(a => a.low > 0);
+  const top = hit.slice().sort((a, b) => (b.low / b.n) - (a.low / a.n) || b.low - a.low || a.name.localeCompare(b.name)).slice(0, 15);
+  // aktivitas input per hari
+  const D = Math.min(H.days, 30), dayKey = t => { const d = new Date(t); return d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate(); };
+  const counts = {};
+  aggs.forEach(a => a.rows.forEach(r => { const k = dayKey(r.t); counts[k] = (counts[k] || 0) + 1; }));
+  const days = [];
+  for (let i = D - 1; i >= 0; i--){ const t = Date.now() - i * 864e5; days.push({ t, c: counts[dayKey(t)] || 0 }); }
+  const mx = Math.max(1, ...days.map(d => d.c));
+  // barang yang tidak pernah dicek selama periode
+  const seen = new Set(aggs.map(a => a.key));
+  const q = S.q.trim().toLowerCase();
+  const never = S.items.filter(i => i.limit != null && i.stock == null
+    && (S.group === 'ALL' || same(i.group, S.group))
+    && (!q || i.name.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q))
+    && !seen.has(String(i.group).toUpperCase() + '|' + i.sku));
+
+  box.innerHTML = `
+    <div class="chips" style="margin-bottom:12px">${chips}</div>
+    <div class="summary">
+      <h2>${hit.length} barang pernah sampai limit</h2>
+      <p>${total ? `${total} input dari ${aggs.length} barang dalam ${H.days} hari terakhir.` : `Belum ada input tercatat dalam ${H.days} hari terakhir. Riwayat mulai terisi sejak Api.gs terbaru dipasang.`}</p>
+    </div>
+    ${top.length ? `<div class="sec" style="margin-top:8px">Paling sering sampai limit</div>
+      <div class="sub" style="margin-bottom:8px">Sentuh barang untuk melihat grafik dan rinciannya.</div>
+      <div class="list">${top.map(a => { const last = a.rows[a.rows.length - 1];
+        return `<button type="button" class="row hist ${last.status}" data-hist="${esc(a.key)}">
+          <div><div class="name">${esc(a.name)}</div><div class="sub">${esc(a.sku)} &nbsp; ${esc(a.group)}</div></div>
+          <div>${spark(a.rows, false)}</div>
+          <div class="state"><div class="bar"><i style="width:${Math.round(a.low / a.n * 100)}%"></i></div>
+            <span class="tag">${a.low}x limit dari ${a.n} input &nbsp; terakhir ${esc(last.text || '-')}</span></div>
+        </button>`; }).join('')}</div>`
+      : (total ? '<div class="empty-box">Tidak ada barang yang sampai limit pada periode ini.</div>' : '')}
+    <div class="sec">Aktivitas input per hari</div>
+    <div class="hbars" role="img" aria-label="Jumlah input per hari">${days.map(d => `<i class="${d.c ? '' : 'z'}" style="height:${d.c ? Math.max(6, d.c / mx * 100) : 3}%" title="${esc(fmtD(d.t))}: ${d.c} input"></i>`).join('')}</div>
+    <div class="sub" style="display:flex;justify-content:space-between"><span>${esc(fmtD(days[0].t))}</span><span>terbanyak ${mx} input/hari</span><span>${esc(fmtD(days[days.length - 1].t))}</span></div>
+    <div class="sec">Belum dicek dalam ${H.days} hari</div>
+    ${never.length ? `<div class="sub" style="margin-bottom:8px">${never.length} barang punya limit tetapi tidak pernah diinput selama periode ini. Barang ini tidak akan pernah muncul sebagai limit.</div>
+      <div class="list">${never.slice(0, 30).map(i => `<div class="row empty"><div><div class="name">${esc(i.name)}</div><div class="sub">${esc(i.sku)} &nbsp; ${esc(i.group)}${i.location ? ' / ' + esc(i.location) : ''}</div></div><div class="qty"><small>limit ${esc(i.limitText || '-')}</small></div></div>`).join('')}</div>
+      ${never.length > 30 ? `<div class="sub" style="margin-top:8px">dan ${never.length - 30} barang lainnya</div>` : ''}`
+      : '<div class="empty-box">Semua barang yang punya limit sudah pernah diinput pada periode ini.</div>'}`;
+}
+function openHistDetail(key){
+  const a = histAgg().find(x => x.key === key); if (!a) return;
+  $('#hdName').textContent = a.name;
+  $('#hdSub').textContent = `${a.sku}   ${a.group}   ${a.low}x sampai limit dari ${a.n} input`;
+  $('#hdChart').innerHTML = spark(a.rows, true);
+  const rows = a.rows.slice().reverse().slice(0, 25);
+  const stTxt = { low:'Di bawah limit', edge:'Tepat di limit', ok:'Aman', mismatch:'Satuan beda', none:'Tanpa limit', empty:'-' };
+  $('#hdTable').innerHTML = `<table class="htab"><tr><th>Waktu</th><th>Stok</th><th>Status</th><th>Pengirim</th></tr>${rows.map(r =>
+    `<tr><td class="t">${esc(fmtDT(r.t))}</td><td>${esc(r.text)}</td><td style="color:${stColor[r.status] || 'inherit'};font-weight:600">${esc(stTxt[r.status] || r.status)}</td><td>${esc(r.sender || '')}</td></tr>`).join('')}</table>`;
+  $('#histDlg').showModal();
+}
+$('#hdClose').onclick = () => $('#histDlg').close();
+document.addEventListener('click', e => {
+  const d = e.target.closest('[data-hdays]');
+  if (d){ S.hist.days = Number(d.dataset.hdays); S.hist.loaded = false; renderHist(); return; }
+  const h = e.target.closest('[data-hist]');
+  if (h){ openHistDetail(h.dataset.hist); return; }
+  if (e.target.id === 'hRetry'){ S.hist.loaded = false; renderHist(); }
+});
+
 /* ---------- kirim laporan WhatsApp (anti dobel) ---------- */
 const SENT_KEY = 'sentScopes';
 const scopeKey = () => (String(S.inGroup || '') + '|' + String(S.inLoc || '')).toUpperCase();
@@ -749,10 +963,11 @@ function setTab(t){
   $('#tabDash').setAttribute('aria-selected', t==='dash');
   $('#tabInput').setAttribute('aria-selected', t==='input');
   $('#tabList').setAttribute('aria-selected', t==='list');
-  $('#viewDash').hidden = t!=='dash'; $('#viewInput').hidden = t!=='input'; $('#viewList').hidden = t!=='list';
+  $('#tabHist').setAttribute('aria-selected', t==='hist');
+  $('#viewDash').hidden = t!=='dash'; $('#viewInput').hidden = t!=='input'; $('#viewList').hidden = t!=='list'; $('#viewHist').hidden = t!=='hist';
   render();
 }
-const TITLES = { dash:'Dashboard', input:'Input stok', list:'Daftar barang' };
+const TITLES = { dash:'Dashboard', input:'Input stok', list:'Daftar barang', hist:'Riwayat' };
 function openDrawer(o){
   $('#drawer').classList.toggle('open', o);
   $('#scrim').hidden = !o;
@@ -770,6 +985,7 @@ updateAvatar();
 $('#tabDash').onclick = () => setTab('dash');
 $('#tabInput').onclick = () => setTab('input');
 $('#tabList').onclick = () => setTab('list');
+$('#tabHist').onclick = () => setTab('hist');
 
 /* input stok lewat pencarian + tambah barang baru */
 const D = { mode:'pick', chosen:null };
@@ -861,8 +1077,11 @@ $('#aSave').onclick = async () => {
     const q = parseQty($('#aStock').value, it);
     if (q.error){ $('#aErr').textContent = q.error; return; }
     $('#aSave').disabled = true;
+    if (!(await confirmQty(it, q))){ $('#aSave').disabled = false; flushPending(); return; }
+    if (it.stock != null){ $('#aErr').textContent = 'Stok barang ini sudah diinput dan terkunci.'; $('#aSave').disabled = false; return; }
     try{
-      const res = await call('saveCell', S.sheet, it.row, 'stock', q.text, S.sender.trim());
+      const res = await call('saveCell', S.sheet, it.row, 'stock', q.text, S.sender.trim(), histMeta(it, q));
+      S.hist.loaded = false;
       it.stock = q.num; it.stockUnit = q.unit; it.stockText = q.text; it.ts = Date.now();
       $('#dlg').close();
       render();
@@ -898,9 +1117,10 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.matches('input.qty')){
     e.preventDefault();
     const all = [...document.querySelectorAll('#viewInput input.qty')], i = all.indexOf(e.target);
-    e.target.blur();
+    const hasVal = e.target.value.trim() !== '';
+    e.target.blur();                                  // bila ada isi, memicu simpan lewat kotak konfirmasi
     const nx = all[i + 1];
-    if (nx) setTimeout(() => nx.focus(), 60);
+    if (!hasVal && nx) setTimeout(() => nx.focus(), 60);
   }
 });
 
