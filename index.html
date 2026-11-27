@@ -245,7 +245,7 @@
 const $ = s => document.querySelector(s);
 const DEFAULT_GROUPS = ['FRIED CHICKEN','ANEKA','ODEN','RAMBI'];
 const S = { sheet:null, items:[], groups:[], version:'', tab:'dash', group:'ALL', inGroup:null, inLoc:null, sender:'', q:'',
-            showEmpty:false, editing:false, pending:false, retention:2, saving:0 };
+            showEmpty:false, editing:false, pending:false, retention:2, saving:0, sending:false };
 const same = (a,b) => String(a).trim().toUpperCase() === String(b).trim().toUpperCase();
 try{ S.sender = localStorage.getItem('sender') || ''; }catch(_){}
 const NO_LOC = '(TANPA LOKASI)';
@@ -524,7 +524,7 @@ function renderInput(){
   $('#viewInput').innerHTML = `
     <div class="gh"><button class="btn" data-back="${locs.length ? 'loc' : 'group'}">${locs.length ? 'Ganti area' : 'Ganti grup'}</button>
       <div><div class="grp" style="margin:0">${title}</div><div class="sub">${all.length} barang</div></div>
-      <button class="btn pri" id="btnSend" style="margin-left:auto">Selesai, kirim ke WhatsApp</button></div>
+      <button class="btn pri" id="btnSend" style="margin-left:auto" ${S.sending ? 'disabled' : ''}>${S.sending ? 'Mengirim…' : 'Selesai, kirim ke WhatsApp'}</button></div>
     ${senderBar()}
     ${items.length ? `<div class="list">${items.map(itemHtml).join('')}</div>`
       : `<div class="empty-box">${all.length ? 'Tidak ada barang yang cocok.' : 'Belum ada barang di sini. Tekan Input barang untuk menambah.'}</div>`}`;
@@ -614,7 +614,7 @@ async function copyText(t){
 // pesan setelah simpan: laporan otomatis terkirim saat semua barang di lokasi/grup itu sudah terisi
 function noteAuto(r){
   if (!r || r.auto === 'none') return false;
-  if (r.auto === 'sent') sync('', `Semua barang ${r.label} sudah diinput. Laporan otomatis terkirim ke WhatsApp.`);
+  if (r.auto === 'sent'){ markSent(); sync('', `Semua barang ${r.label} sudah diinput. Laporan otomatis terkirim ke WhatsApp.`); }
   else sync('err', `Stok tersimpan, tetapi laporan otomatis gagal terkirim: ${r.error}. Tekan "Selesai, kirim ke WhatsApp" untuk mencoba lagi.`);
   return true;
 }
@@ -660,22 +660,53 @@ async function saveField(input){
 }
 
 /* ---------- interaksi ---------- */
-async function sendReport(btn){
-  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();  // pastikan input terakhir tersimpan
-  const old = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Mengirim…';
-  sync('busy', 'Mengirim laporan ke WhatsApp…');
+/* ---------- kirim laporan WhatsApp (anti dobel) ---------- */
+const SENT_KEY = 'sentScopes';
+const scopeKey = () => (String(S.inGroup || '') + '|' + String(S.inLoc || '')).toUpperCase();
+function readSent(){
   try{
+    const o = JSON.parse(localStorage.getItem(SENT_KEY) || '{}'), now = Date.now(), out = {};
+    Object.keys(o).forEach(k => { if (now - o[k] < 12 * 36e5) out[k] = o[k]; });   // ingatan 12 jam
+    return out;
+  }catch(_){ return {}; }
+}
+function markSent(){
+  try{ const o = readSent(); o[scopeKey()] = Date.now(); localStorage.setItem(SENT_KEY, JSON.stringify(o)); }catch(_){}
+}
+function sentAgo(){
+  const t = readSent()[scopeKey()];
+  return t ? Math.max(1, Math.round((Date.now() - t) / 60000)) : 0;
+}
+function setSendBtn(){
+  const b = $('#btnSend'); if (!b) return;
+  b.disabled = S.sending;
+  b.textContent = S.sending ? 'Mengirim…' : 'Selesai, kirim ke WhatsApp';
+}
+async function sendReport(){
+  if (S.sending) return;                    // sedang mengirim: tekanan berikutnya diabaikan
+  S.sending = true; setSendBtn();           // dikunci seketika, tetap terkunci walau halaman digambar ulang
+  try{
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();  // pastikan input terakhir tersimpan
+    const scope = S.inGroup + (S.inLoc ? ' / ' + locLabel(S.inLoc) : '');
+    let force = false;
+    const ago = sentAgo();
+    if (ago){                               // laporan area ini sudah pernah terkirim (otomatis atau manual)
+      if (!confirm(`Laporan ${scope} sudah terkirim ${ago} menit lalu. Kirim lagi?`)){ sync('', 'Pengiriman dibatalkan, laporan tidak dikirim lagi'); return; }
+      force = true;
+    }
+    sync('busy', 'Mengirim laporan ke WhatsApp…');
     await new Promise(r => setTimeout(r, 300));
     while (S.saving > 0) await new Promise(r => setTimeout(r, 150));
     if (!S.sender.trim()) throw new Error('Isi nama pengirim dulu di bagian atas.');
-    const r = await call('sendGroupReport', S.sheet, S.inGroup, S.inLoc ? S.inLoc : null, S.sender.trim());
-    sync('', `Laporan ${S.inGroup}${S.inLoc ? ' / ' + locLabel(S.inLoc) : ''} terkirim ke WhatsApp (${r.sent} barang)`);
+    const r = await call('sendGroupReport', S.sheet, S.inGroup, S.inLoc ? S.inLoc : null, S.sender.trim(), force);
+    markSent();
+    if (r && r.duplicate) sync('', `Laporan ${scope} baru saja terkirim, tidak dikirim dua kali`);
+    else sync('', `Laporan ${scope} terkirim ke WhatsApp (${r.sent} barang)`);
   }catch(e){ sync('err', 'Gagal kirim: ' + (e.message || e)); }
-  btn.disabled = false; btn.textContent = old;
+  finally{ S.sending = false; setSendBtn(); }
 }
 document.addEventListener('click', async e => {
-  if (e.target.id === 'btnSend'){ sendReport(e.target); return; }
+  if (e.target.closest('#btnSend')){ sendReport(); return; }
   if (e.target.id === 'btnCopy'){ await copyText(listText(listItems())); sync('', 'Daftar disalin'); return; }
   if (e.target.id === 'btnWa'){ window.open('https://wa.me/?text=' + encodeURIComponent(listText(listItems())), '_blank'); return; }
   const g = e.target.closest('[data-group]');
